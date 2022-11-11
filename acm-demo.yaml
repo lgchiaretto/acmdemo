@@ -61,7 +61,7 @@ spec:
         deploymentconfig: acm-demo
     spec:
       containers:
-      - image: "quay.io/chiaretto/prometheus-example-app:latest"
+      - image: "quay.io/chiaretto/chiaretto-app:latest"
         imagePullPolicy: Always
         name: acm-demo
         ports:
