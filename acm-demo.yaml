@@ -61,7 +61,7 @@ spec:
         deploymentconfig: acm-demo
     spec:
       containers:
-      - image: "quay.io/chiaretto/chiaretto-app:3.0"
+      - image: "quay.io/chiaretto/chiaretto-app:3.1"
         imagePullPolicy: Always
         name: acm-demo
         ports:
