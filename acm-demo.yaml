@@ -116,7 +116,7 @@ metadata:
   name: acm-demo
   namespace: acm-demo
 spec:
-  host: "acmdemo.dev.chiaret.to"
+  host: "acmdemo.apps.dev.chiaret.to"
   port:
     targetPort: 8080-tcp
   tls:
