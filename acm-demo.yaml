@@ -1,0 +1,146 @@
+---
+# Source: chiaretto-prometheus-app/templates/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acm-demo
+  labels:
+    app: acm-demo
+  annotations:
+    openshift.io/node-selector: ''
+---
+# Source: chiaretto-prometheus-app/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: acm-demo
+    app.kubernetes.io/component: acm-demo
+    app.kubernetes.io/instance: acm-demo
+  name: acm-demo
+  namespace: acm-demo
+spec:
+  ports:
+  - name: 8080-tcp
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    deploymentconfig: acm-demo
+  sessionAffinity: None
+  type: ClusterIP
+---
+# Source: chiaretto-prometheus-app/templates/deploymentconfig.yaml
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: acm-demo
+    app.kubernetes.io/component: acm-demo
+    app.kubernetes.io/instance: acm-demo
+  name: acm-demo
+  namespace: acm-demo
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    deploymentconfig: acm-demo
+  strategy:
+    activeDeadlineSeconds: 21600
+    resources: {}
+    rollingParams:
+      intervalSeconds: 1
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+    type: Rolling
+  template:
+    metadata:
+      labels:
+        deploymentconfig: acm-demo
+    spec:
+      containers:
+      - image: "quay.io/chiaretto/prometheus-example-app:latest"
+        imagePullPolicy: Always
+        name: acm-demo
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  test: false
+  triggers:
+  - type: ConfigChange
+---
+# Source: chiaretto-prometheus-app/templates/prometheusrules.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: acm-demo
+  namespace: acm-demo
+spec:
+  groups:
+  - name: acm-demo
+    rules:
+    - alert: TooMany502Errors
+      annotations:
+        summary: High number of HTTP 502 errors
+      expr: '100 * (sum by(instance) (rate(http_requests_total{namespace="acm-demo",code="502"}[2m])) / sum by(instance) (rate(http_requests_total{namespace="acm-demo"}[2m]))) > 10'
+      for: 1m
+      labels:
+        app: acm-demo
+        severity: critical
+        team: chiaretto
+---
+# Source: chiaretto-prometheus-app/templates/route.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: acm-demo
+    app.kubernetes.io/component: acm-demo
+    app.kubernetes.io/instance: acm-demo
+  name: acm-demo
+  namespace: acm-demo
+spec:
+  host: "acmdemo.chiaretto.com.br"
+  port:
+    targetPort: 8080-tcp
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: acm-demo
+    weight: 100
+  wildcardPolicy: None
+---
+# Source: chiaretto-prometheus-app/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: acm-demo
+  name: acm-demo
+  namespace: acm-demo
+spec:
+  endpoints:
+  - interval: 30s
+    port: 8080-tcp
+    scheme: http
+  selector:
+    matchLabels:
+      app: acm-demo
